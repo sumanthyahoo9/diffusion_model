@@ -12,14 +12,13 @@ Implements complete training loop with:
 """
 import os
 import argparse
-from pathlib import Path
-import json
 import torch
 import torch.nn as nn
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, Dataset
 from torch.optim import AdamW
 from torch.optim.lr_scheduler import CosineAnnealingLR
 from tqdm import tqdm
+import wandb
 
 # Import modules (adjust paths as needed)
 from src.models.diffusion import Diffusion
@@ -27,6 +26,7 @@ from src.models.encoder import Encoder
 from src.models.clip import CLIP
 from src.schedulers.ddpm_scheduler import DDPMScheduler
 from .tokenizer import Tokenizer
+from .utils import get_time_embedding
 
 
 def parse_args():
@@ -183,7 +183,6 @@ class DiffusionTrainer:
         noisy_latents = self.noise_scheduler.add_noise(latents, noise, timesteps)
         
         # Get timestep embeddings
-        from .utils import get_time_embedding
         time_emb = torch.stack([
             get_time_embedding(t.item(), dtype=latents.dtype)
             for t in timesteps
@@ -340,10 +339,26 @@ class DiffusionTrainer:
         """Log training metrics."""
         if self.args.use_wandb:
             try:
-                import wandb
                 wandb.log(metrics, step=self.global_step)
             except ImportError:
                 pass
+
+class DummyDataset(Dataset):
+    """
+    Create a dummy dataset
+    """
+    def __init__(self, image_size):
+        super().__init__()
+        self.image_size = image_size
+
+    def __len__(self):
+        return 1000
+    
+    def __getitem__(self):
+        return {
+            'images': torch.randn(3, self.image_size, self.image_size),
+            'captions': "A beautiful landscape"
+        }
 
 
 def create_dummy_dataloader(args):
@@ -351,19 +366,8 @@ def create_dummy_dataloader(args):
     Create dummy dataloader for testing.
     Replace with actual dataset implementation.
     """
-    from torch.utils.data import Dataset
     
-    class DummyDataset(Dataset):
-        def __len__(self):
-            return 1000
-        
-        def __getitem__(self, idx):
-            return {
-                'images': torch.randn(3, args.image_size, args.image_size),
-                'captions': "A beautiful landscape"
-            }
-    
-    dataset = DummyDataset()
+    dataset = DummyDataset(args.image_size)
     dataloader = DataLoader(
         dataset,
         batch_size=args.batch_size,
@@ -382,7 +386,6 @@ def main():
     # Initialize W&B if requested
     if args.use_wandb:
         try:
-            import wandb
             wandb.init(project="stable-diffusion", config=vars(args))
         except ImportError:
             print("W&B not installed, skipping logging")

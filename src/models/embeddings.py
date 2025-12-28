@@ -7,7 +7,7 @@ Transforms scalar timesteps into rich vector representations.
 """
 import torch
 from torch import nn
-from torch.nn import functional as F
+import torch.nn.functional as F
 
 
 class TimeEmbedding(nn.Module):
@@ -43,3 +43,4 @@ class TimeEmbedding(nn.Module):
         x = F.silu(x)
         x = self.linear_2(x)
         return x
+    
