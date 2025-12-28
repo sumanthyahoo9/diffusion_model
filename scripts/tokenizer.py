@@ -11,7 +11,6 @@ and maximum sequence length of 77 tokens.
 import json
 import functools
 import unicodedata
-from pathlib import Path
 from typing import List, Tuple, Dict
 import regex as re
 
