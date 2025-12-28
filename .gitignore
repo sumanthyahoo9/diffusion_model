@@ -3,3 +3,6 @@
 .idea/
 *.pyc
 .DS_Store
+
+# Virtual environment files
+ldm_env/
